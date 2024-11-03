@@ -4,7 +4,6 @@ import requests
 import os
 import threading
 import mysql.connector
-import tkinter.messagebox
 from io import BytesIO
 from PIL import Image
 from newspaper import Article
@@ -27,7 +26,7 @@ cursor.execute("create database if not exists infostellar")
 cursor.execute("use infostellar")
 
 # API requests
-apod_info = requests.get("https://api.nasa.gov/planetary/apod?date=2023-1-4&api_key=DEMO_KEY").json()
+apod_info = requests.get("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY").json()
 news = requests.get("https://api.spaceflightnewsapi.net/v4/articles/").json()["results"]
 
 # functions
@@ -41,6 +40,8 @@ def saved_apods():
     ctk.CTkLabel(apods, text="Saved APODs", font=("Consolas", 50)).pack()
     apods_frame = ctk.CTkScrollableFrame(apods, 1000, 500)
     cursor.execute("select * from apods")
+    loading = ctk.CTkLabel(apods, text = "Fetching saved apods...", font = ("Consolas", 40))
+    loading.place(relx = 0.32, rely = 0.2)
     for apod_data in cursor.fetchall():
         title = apod_data[0]
         date = apod_data[1]
@@ -50,7 +51,7 @@ def saved_apods():
         apod = ctk.CTkImage(
             dark_image=Image.open(BytesIO(requests.get(url).content)), size=(300, 300)
         )
-        ctk.CTkLabel(apod_frame, text="", image=apod).place(relx=0.05, rely=0.15)
+        ctk.CTkLabel(apod_frame, text="", image = apod).place(relx=0.05, rely=0.15)
         ctk.CTkLabel(
             apod_frame, text=f"Title: {title}", font=("Consolas", 20), wraplength=400
         ).place(relx=0.5, rely=0.15)
@@ -60,26 +61,30 @@ def saved_apods():
         ctk.CTkLabel(
             apod_frame, text=f"Copyright: {copyright}", font=("Consolas", 20)
         ).place(relx=0.5, rely=0.4)
-
         apod_frame.pack_propagate(False)
         apod_frame.pack(pady=10)
+
+        
+    loading.destroy()
     apods_frame.pack()
 
+def start_saved_apods():
+    threading.Thread(target = saved_apods).start()
 
 def save_apod_info():
     cursor.execute(
         "create table if not exists apods(title varchar(100) unique, date date, url varchar(200), copyright varchar(50))"
     )
-    title = apod_info.get("title", "null")
-    date = apod_info.get("date", "null")
+    title = apod_info.get("title", "no title available")
+    date = apod_info.get("date", "no date available")
     url = apod_info.get("hdurl", "null")
-    copyright = apod_info.get("copyright", "null")
+    copyright = apod_info.get("copyright", "None")
     if url != "null":
         cursor.execute(
             f"insert ignore into apods values('{title}', '{date}', '{url}', '{copyright}')"
         )
         con_obj.commit()
-        download_image()
+        start_downloading_image()
     else:
         tkinter.messagebox.showerror(
             "APOD info not available", "APOD info cannot be saved :/"
@@ -239,6 +244,7 @@ def saved_articles():
     articles_frame.pack()
 
 
+# GUI
 ctk.CTkLabel(app, 100, 100, text="Infostellar", font=("Consolas", 50)).pack()
 ctk.CTkButton(
     app,
@@ -249,7 +255,7 @@ ctk.CTkButton(
     image=ctk.CTkImage(dark_image=Image.open("images/image.png"), size=(50, 50)),
     fg_color="#1d1f1d",
     hover_color="#2d2e2e",
-    command=saved_apods,
+    command=start_saved_apods,
 ).place(relx=0.01, rely=0.02)
 ctk.CTkButton(
     app,
@@ -288,20 +294,21 @@ ctk.CTkButton(
     20,
     40,
     50,
-    text="",
-    image=ctk.CTkImage(dark_image=Image.open("images/save.png"), size=(40, 40)),
-    fg_color="#1d1f1d",
-    hover_color="#2d2e2e",
-    command=save_apod_info,
+    text = "",
+    image = ctk.CTkImage(dark_image=Image.open("images/save.png"), size=(40, 40)),
+    fg_color = "#1d1f1d",
+    hover_color = "#2d2e2e",
+    command = save_apod_info,
 ).place(relx=0.9)
 try:
     apod = ctk.CTkImage(
-        dark_image=Image.open(BytesIO(requests.get(apod_info["hdurl"]).content)),
-        size=(400, 400),
+        dark_image = Image.open(BytesIO(requests.get(apod_info["hdurl"]).content)),
+        size = (400, 400)
     )
 except:
     apod = ctk.CTkImage(
-        dark_image=Image.open("images/image-not-available.png"), size=(400, 400)
+        dark_image = Image.open("images/image-not-available.png"),
+        size = (400, 400)
     )
 ctk.CTkLabel(apod_tab, text="", image=apod).pack()
 ctk.CTkLabel(apod_tab, text=apod_info["title"], font=("Consolas", 25)).pack(pady=10)
@@ -309,7 +316,8 @@ ctk.CTkLabel(
     apod_tab,
     text="Copyright: \n" + apod_info.get("copyright", "None").strip("\n"),
     font=("Consolas", 15),
-).place(relx=0.9, rely=0.9)
+    wraplength = 100
+).place(relx=0.9, rely=0.8)
 
 news_tab = tab_view.add("News")
 news_frame = ctk.CTkScrollableFrame(news_tab, 1000, 500)
@@ -351,6 +359,5 @@ for article in news:
     article_number = article_number + 1
 
 tab_view.pack()
-
 
 app.mainloop()
