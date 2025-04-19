@@ -3,4 +3,6 @@ A space news app using spaceflightnewsapi's API with Astronomy Picture of the Da
 <br>
 This was my 12th grade CS Project :)
 <br>
-Note: This app is not yet fully developed: it has responsiveness and performace issues.
+Icons used are taken from google fonts.
+<br>
+Note: This app has responsiveness and performance issues.
